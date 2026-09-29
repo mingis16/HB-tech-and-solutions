@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-ink font-sans text-fg antialiased;
+  }
+
+  ::selection {
+    @apply bg-cyber/30 text-fg;
+  }
+
+  :focus-visible {
+    outline: 2px solid theme("colors.cyber.DEFAULT");
+    outline-offset: 2px;
+  }
+
+  /* Native dropdown lists follow the dark theme on desktop browsers. */
+  select option {
+    background-color: theme("colors.surface.DEFAULT");
+    color: theme("colors.fg.DEFAULT");
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-cyber;
+  }
+
+  .panel {
+    @apply rounded-2xl border border-edge bg-surface/80 shadow-panel backdrop-blur;
+  }
+
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply btn bg-cyber text-ink-deep hover:bg-cyber-400 hover:shadow-glow-sm active:bg-cyber-600;
+  }
+
+  .btn-ghost {
+    @apply btn border border-edge-strong bg-surface/60 text-fg hover:border-cyber/60 hover:bg-surface-hover;
+  }
+
+  /* 16px on mobile prevents iOS Safari from zooming into focused fields. */
+  .field {
+    @apply block min-h-12 w-full rounded-lg border border-edge bg-ink/70 px-3.5 py-3 text-base text-fg outline-none transition placeholder:text-fg-subtle hover:border-edge-strong focus:border-cyber focus:ring-2 focus:ring-cyber/25 sm:text-sm;
+  }
+
+  .field-invalid {
+    @apply border-severity-critical/70 focus:border-severity-critical focus:ring-severity-critical/20;
+  }
+
+  .field-valid {
+    @apply border-cyber/40;
+  }
+}
