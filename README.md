@@ -48,7 +48,8 @@ Cancelling a booking frees its slot again.
 Every submission passes these layers in `src/lib/spam.ts` before anything is saved:
 
 1. **Honeypot:** a hidden field only bots fill in; those submissions are silently discarded.
-2. **Time trap:** forms submitted less than 3 seconds after opening are rejected.
+2. **Time trap:** inquiries sent less than 3 seconds (bookings: 2 seconds) after the form opens are
+   rejected with a friendly "that was quick" message.
 3. **Content rules:** no links in names or titles, max 2 links in descriptions, no BBCode/HTML links.
 4. **Cloudflare Turnstile** (optional): enabled when both keys are set.
 5. **Rate limits:** 5 inquiries and 3 bookings per hour per IP (IP addresses are stored only as salted

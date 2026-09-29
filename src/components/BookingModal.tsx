@@ -93,10 +93,17 @@ function BookingFlow({ initialService, onClose }: { initialService?: ServiceType
   const [turnstileKey, setTurnstileKey] = useState(0);
   // When the booking flow opened; instant submissions are treated as bots.
   const startedAt = useRef(0);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     startedAt.current = Date.now();
   }, []);
+
+  // The error banner sits at the top of the scrolling body while the visitor
+  // is down by the buttons, so bring it into view whenever it changes.
+  useEffect(() => {
+    if (serverError) errorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [serverError]);
 
   const booked = bookedByDate[date];
   const loadingSlots = booked === undefined;
@@ -241,6 +248,7 @@ function BookingFlow({ initialService, onClose }: { initialService?: ServiceType
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
         {serverError && step !== "done" && (
           <div
+            ref={errorRef}
             role="alert"
             className="mb-4 flex items-start gap-2 rounded-lg border border-severity-critical/40 bg-severity-critical/10 px-3.5 py-3 text-sm text-fg"
           >

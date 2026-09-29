@@ -82,7 +82,7 @@ async function screen(
   meta: SubmitMeta | undefined,
   content: { name: string; title?: string; body?: string },
 ): Promise<Failure | { ipHash: string | null }> {
-  if (isTooFast(meta?.elapsedMs)) {
+  if (isTooFast(meta?.elapsedMs, kind)) {
     return {
       ok: false,
       code: "too_fast",

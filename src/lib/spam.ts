@@ -9,7 +9,9 @@ import { headers } from "next/headers";
 //   4. Cloudflare Turnstile      (only when both keys are configured)
 //   5. Per-IP rate limits        (in-memory per instance + Supabase-backed)
 
-export const MIN_FILL_MS = 3000;
+/** Minimum time from a form appearing to its submission. The booking flow is
+ * short (pick a slot, autofill two fields), so it gets a lower bar. */
+export const MIN_FILL_MS = { inquiry: 3000, booking: 2000 } as const;
 
 export const LIMITS = {
   inquiry: { perHour: 5 },
@@ -28,8 +30,8 @@ export function hashIp(ip: string) {
   return createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32);
 }
 
-export function isTooFast(elapsedMs: unknown) {
-  return typeof elapsedMs !== "number" || !Number.isFinite(elapsedMs) || elapsedMs < MIN_FILL_MS;
+export function isTooFast(elapsedMs: unknown, kind: keyof typeof MIN_FILL_MS) {
+  return typeof elapsedMs !== "number" || !Number.isFinite(elapsedMs) || elapsedMs < MIN_FILL_MS[kind];
 }
 
 const LINK_RE = /(?:https?:\/\/|www\.)\S+/gi;
