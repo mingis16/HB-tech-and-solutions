@@ -1,5 +1,7 @@
-import { ArrowRight, Bot, Code2, ShieldCheck } from "lucide-react";
+import { Bot, Code2, MapPin, ShieldCheck } from "lucide-react";
+import { ADDRESS } from "@/lib/constants";
 import { BookCallButton } from "../BookCallButton";
+import { PrimaryCta } from "../PrimaryCta";
 import { TerminalDots } from "../ui/TerminalDots";
 
 type TerminalLine =
@@ -43,7 +45,7 @@ export function Hero() {
             <span className="inline-block h-4 w-2 shrink-0 animate-blink bg-cyber" aria-hidden="true" />
           </p>
 
-          <h1 className="mt-6 text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-fg sm:text-5xl lg:text-6xl">
+          <h1 className="mt-6 text-4xl font-semibold leading-[1.08] tracking-tight text-fg sm:text-5xl lg:text-6xl">
             Elite software.
             <br />
             <span className="bg-gradient-to-r from-cyber-300 via-cyber to-cyber-500 bg-clip-text text-transparent">
@@ -59,20 +61,28 @@ export function Hero() {
             and scaling your business.
           </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a href="#inquiry" className="btn-primary px-6">
-              Request a service
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </a>
-            <BookCallButton variant="ghost" className="px-6" />
+          <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-5">
+            <PrimaryCta location="hero" className="min-h-12 px-7 text-base" />
+            <BookCallButton variant="link" className="justify-center sm:justify-start">
+              or book a 30-min discovery call
+            </BookCallButton>
           </div>
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-fg-subtle sm:justify-start">
+            <MapPin className="size-3.5 text-cyber" aria-hidden="true" />
+            Based in {ADDRESS.city}, {ADDRESS.country}. Working with teams everywhere.
+          </p>
 
           <ul className="mt-10 grid gap-3 sm:grid-cols-3">
             {PILLARS.map(({ icon: Icon, title, text }) => (
-              <li key={title} className="rounded-xl border border-edge bg-surface/50 p-4 backdrop-blur">
-                <Icon className="size-5 text-cyber" aria-hidden="true" />
-                <p className="mt-2.5 text-sm font-semibold text-fg">{title}</p>
-                <p className="mt-1 text-xs leading-relaxed text-fg-muted">{text}</p>
+              <li
+                key={title}
+                className="flex gap-3 rounded-xl border border-edge bg-surface/50 p-3.5 backdrop-blur sm:block sm:p-4"
+              >
+                <Icon className="mt-0.5 size-5 shrink-0 text-cyber" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-semibold text-fg sm:mt-2.5">{title}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-fg-muted sm:mt-1">{text}</p>
+                </div>
               </li>
             ))}
           </ul>

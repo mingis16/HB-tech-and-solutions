@@ -3,8 +3,17 @@
 import { randomBytes } from "node:crypto";
 import { headers } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
-import { BOOKING, isBookableDate, isValidDateString } from "@/lib/booking";
+import { BOOKING, isBookableDate, isValidDateString, todayIn } from "@/lib/booking";
 import { SITE } from "@/lib/constants";
+import {
+  LIMITS,
+  allowByMemory,
+  getClientIp,
+  hashIp,
+  isTooFast,
+  spamReason,
+  verifyTurnstile,
+} from "@/lib/spam";
 import {
   bookingSchema,
   inquirySchema,
@@ -12,9 +21,12 @@ import {
   type BookingFormValues,
   type InquiryFormValues,
 } from "@/lib/validation";
-import type { ActionResult } from "@/lib/types";
+import type { ActionResult, SubmitMeta } from "@/lib/types";
+
+type Failure = Extract<ActionResult<never>, { ok: false }>;
 
 const REFERENCE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 chars, no 0/O/1/I
+const HOUR_MS = 60 * 60 * 1000;
 
 function makeReference(prefix: string) {
   let suffix = "";
@@ -55,8 +67,63 @@ function notConfigured<T>(data: T): ActionResult<T> {
   return { ok: true, data, demo: true };
 }
 
+const RATE_LIMITED: Failure = {
+  ok: false,
+  code: "rate_limited",
+  error: "Too many submissions from your network. Please try again later, or message us on WhatsApp.",
+};
+
+/**
+ * Runs the anti-spam layers that don't need the database.
+ * Returns a failure to send back, or the hashed IP for storage and DB limits.
+ */
+async function screen(
+  kind: keyof typeof LIMITS,
+  meta: SubmitMeta | undefined,
+  content: { name: string; title?: string; body?: string },
+): Promise<Failure | { ipHash: string | null }> {
+  if (isTooFast(meta?.elapsedMs)) {
+    return {
+      ok: false,
+      code: "too_fast",
+      error: "That was quick! Please take a moment to review your details, then submit again.",
+    };
+  }
+
+  const reason = spamReason(content);
+  if (reason) return { ok: false, code: "validation", error: reason };
+
+  const ip = await getClientIp();
+  if (!(await verifyTurnstile(meta?.turnstileToken, ip))) {
+    return { ok: false, code: "captcha", error: "Please complete the security check and try again." };
+  }
+
+  // Without an IP (e.g. a proxy that strips it) every visitor would share one
+  // bucket, so IP limits are skipped rather than blocking everyone.
+  const ipHash = ip ? hashIp(ip) : null;
+  if (ipHash && !allowByMemory(`${kind}:${ipHash}`, LIMITS[kind].perHour)) return RATE_LIMITED;
+
+  return { ipHash };
+}
+
+async function overDatabaseLimit(table: "inquiries" | "bookings", ipHash: string | null, limit: number) {
+  const supabase = getSupabaseAdmin();
+  if (!supabase || !ipHash) return false;
+  const { count, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq("ip_hash", ipHash)
+    .gte("created_at", new Date(Date.now() - HOUR_MS).toISOString());
+  if (error) {
+    console.error(`[${table}] rate-limit lookup failed:`, error.code, error.message);
+    return false;
+  }
+  return (count ?? 0) >= limit;
+}
+
 export async function submitInquiry(
   values: InquiryFormValues & { website?: string },
+  meta?: SubmitMeta,
 ): Promise<ActionResult<{ reference: string }>> {
   const reference = makeReference("INQ");
   if (isBot(values)) return { ok: true, data: { reference } };
@@ -70,11 +137,19 @@ export async function submitInquiry(
       fieldErrors: toFieldErrors(parsed.error),
     };
   }
+  const input = parsed.data;
+
+  const screened = await screen("inquiry", meta, {
+    name: input.name,
+    title: input.title,
+    body: input.description,
+  });
+  if ("ok" in screened) return screened;
 
   const supabase = getSupabaseAdmin();
   if (!supabase) return notConfigured({ reference });
+  if (await overDatabaseLimit("inquiries", screened.ipHash, LIMITS.inquiry.perHour)) return RATE_LIMITED;
 
-  const input = parsed.data;
   const { error } = await supabase.from("inquiries").insert({
     reference,
     name: input.name,
@@ -87,6 +162,7 @@ export async function submitInquiry(
     title: input.title,
     description: input.description,
     user_agent: await userAgent(),
+    ip_hash: screened.ipHash,
   });
 
   if (error) {
@@ -123,6 +199,7 @@ export async function getBookedSlots(date: string): Promise<string[]> {
 
 export async function createBooking(
   values: BookingFormValues & { website?: string },
+  meta?: SubmitMeta,
 ): Promise<ActionResult<{ reference: string }>> {
   const reference = makeReference("CALL");
   if (isBot(values)) return { ok: true, data: { reference } };
@@ -136,8 +213,8 @@ export async function createBooking(
       fieldErrors: toFieldErrors(parsed.error),
     };
   }
-
   const input = parsed.data;
+
   if (!isBookableDate(input.date, SITE.timeZone)) {
     return {
       ok: false,
@@ -147,13 +224,34 @@ export async function createBooking(
     };
   }
 
+  const screened = await screen("booking", meta, { name: input.name, body: input.notes });
+  if ("ok" in screened) return screened;
+
   const supabase = getSupabaseAdmin();
   if (!supabase) return notConfigured({ reference });
+  if (await overDatabaseLimit("bookings", screened.ipHash, LIMITS.booking.perHour)) return RATE_LIMITED;
+
+  const email = input.email.toLowerCase();
+  const { count: upcoming, error: upcomingError } = await supabase
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("email", email)
+    .gte("booking_date", todayIn(SITE.timeZone))
+    .neq("status", "cancelled");
+  if (upcomingError) {
+    console.error("[bookings] upcoming lookup failed:", upcomingError.code, upcomingError.message);
+  } else if ((upcoming ?? 0) >= LIMITS.booking.activePerEmail) {
+    return {
+      ok: false,
+      code: "limit",
+      error: `You already have ${LIMITS.booking.activePerEmail} upcoming calls booked. Message us on WhatsApp to reschedule or add another.`,
+    };
+  }
 
   const { error } = await supabase.from("bookings").insert({
     reference,
     name: input.name,
-    email: input.email.toLowerCase(),
+    email,
     phone: input.phone || null,
     company: input.company || null,
     service_type: input.serviceType || null,
@@ -163,6 +261,7 @@ export async function createBooking(
     duration_minutes: BOOKING.durationMinutes,
     timezone: SITE.timeZone,
     user_agent: await userAgent(),
+    ip_hash: screened.ipHash,
   });
 
   if (error) {

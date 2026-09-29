@@ -8,6 +8,7 @@ export function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with HB Tech Solutions on WhatsApp"
+      data-track-location="floating_button"
       className="group fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-[calc(1.25rem+env(safe-area-inset-right))] z-40 grid size-14 place-items-center rounded-full bg-[#25D366] text-white shadow-[0_12px_30px_-6px_rgb(37_211_102/0.55)] transition hover:scale-105 active:scale-95"
     >
       <span aria-hidden="true" className="absolute inset-0 animate-ping-slow rounded-full bg-[#25D366]/50" />

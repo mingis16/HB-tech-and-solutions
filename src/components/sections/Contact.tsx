@@ -1,6 +1,6 @@
-import { Check, Mail } from "lucide-react";
+import { Check, Mail, MapPin } from "lucide-react";
 import { BOOKING, formatSlot, timeZoneLabel } from "@/lib/booking";
-import { SITE, whatsappLink } from "@/lib/constants";
+import { ADDRESS, MAPS_URL, SITE, WHATSAPP_DISPLAY, whatsappLink } from "@/lib/constants";
 import { BookCallButton } from "../BookCallButton";
 import { InquiryForm } from "../InquiryForm";
 import { WhatsAppIcon } from "../WhatsAppIcon";
@@ -60,29 +60,50 @@ export function Contact() {
               <BookCallButton className="mt-5 w-full">Pick a time slot</BookCallButton>
             </div>
 
-            {/* Instant channel */}
+            {/* Direct contact */}
             <div className="panel p-6">
-              <p className="eyebrow">Instant channel</p>
+              <p className="eyebrow">Direct line</p>
               <h3 className="mt-2 text-lg font-semibold text-fg">Chat on WhatsApp</h3>
               <p className="mt-1.5 text-sm text-fg-muted">Quick question or an active incident? Message us directly.</p>
               <a
                 href={whatsappLink()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn mt-4 w-full bg-[#25D366] text-ink-deep hover:bg-[#2fe476]"
+                data-track-location="contact_card"
+                className="btn-ghost mt-4 w-full"
               >
-                <WhatsAppIcon className="size-5" />
-                Start a chat
+                <WhatsAppIcon className="size-5 text-[#25D366]" />
+                {WHATSAPP_DISPLAY}
               </a>
-              {SITE.contactEmail && (
-                <a
-                  href={`mailto:${SITE.contactEmail}`}
-                  className="mt-3 flex items-center justify-center gap-2 text-sm text-fg-muted transition hover:text-cyber"
-                >
-                  <Mail className="size-4" aria-hidden="true" />
-                  {SITE.contactEmail}
-                </a>
-              )}
+              <dl className="mt-5 space-y-3 border-t border-edge pt-5 text-sm">
+                <div className="flex items-start gap-3">
+                  <dt className="sr-only">Office</dt>
+                  <MapPin className="mt-0.5 size-4 shrink-0 text-cyber" aria-hidden="true" />
+                  <dd>
+                    <a
+                      href={MAPS_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-fg-muted transition hover:text-cyber"
+                    >
+                      {ADDRESS.street}, {ADDRESS.area}
+                      <br />
+                      {ADDRESS.city}, {ADDRESS.country}
+                    </a>
+                  </dd>
+                </div>
+                {SITE.contactEmail && (
+                  <div className="flex items-center gap-3">
+                    <dt className="sr-only">Email</dt>
+                    <Mail className="size-4 shrink-0 text-cyber" aria-hidden="true" />
+                    <dd>
+                      <a href={`mailto:${SITE.contactEmail}`} className="text-fg-muted transition hover:text-cyber">
+                        {SITE.contactEmail}
+                      </a>
+                    </dd>
+                  </div>
+                )}
+              </dl>
             </div>
 
             {/* What happens next */}

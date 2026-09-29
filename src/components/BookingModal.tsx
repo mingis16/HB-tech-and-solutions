@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -13,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { createBooking, getBookedSlots } from "@/app/actions";
+import { track } from "@/lib/analytics";
 import {
   BOOKING,
   TIME_SLOTS,
@@ -30,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { Dialog } from "./ui/Dialog";
 import { Field, SelectShell, describedBy, fieldClass } from "./ui/Field";
 import { TextField } from "./ui/TextField";
+import { TURNSTILE_ENABLED, Turnstile } from "./Turnstile";
 
 type Step = "slot" | "details" | "done";
 type DetailKey = "name" | "email" | "phone" | "company" | "serviceType" | "notes";
@@ -86,6 +89,14 @@ function BookingFlow({ initialService, onClose }: { initialService?: ServiceType
   const [serverError, setServerError] = useState<string | null>(null);
   const [result, setResult] = useState<{ reference: string; demo?: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileKey, setTurnstileKey] = useState(0);
+  // When the booking flow opened; instant submissions are treated as bots.
+  const startedAt = useRef(0);
+
+  useEffect(() => {
+    startedAt.current = Date.now();
+  }, []);
 
   const booked = bookedByDate[date];
   const loadingSlots = booked === undefined;
@@ -146,10 +157,22 @@ function BookingFlow({ initialService, onClose }: { initialService?: ServiceType
       return;
     }
 
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setServerError("Please complete the security check below.");
+      return;
+    }
+
     setServerError(null);
     startTransition(async () => {
-      const res = await createBooking({ ...values, website });
+      const res = await createBooking(
+        { ...values, website },
+        { elapsedMs: Date.now() - startedAt.current, turnstileToken },
+      );
+      // Tokens are single-use.
+      setTurnstileToken("");
+      setTurnstileKey((k) => k + 1);
       if (res.ok) {
+        track("book_call", { service: details.serviceType || "general" });
         setResult({ reference: res.data.reference, demo: res.demo });
         setStep("done");
         return;
@@ -232,7 +255,7 @@ function BookingFlow({ initialService, onClose }: { initialService?: ServiceType
               <h3 id="booking-date-label" className="mb-3 text-sm font-medium text-fg">
                 Choose a date
               </h3>
-              <div className="-mx-5 flex snap-x gap-2 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 sm:pb-0">
+              <div className="-mx-5 flex snap-x scroll-px-5 gap-2 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 sm:pb-0">
                 {dates.map((d) => {
                   const parts = formatDateParts(d);
                   const selected = d === date;
@@ -415,6 +438,22 @@ function BookingFlow({ initialService, onClose }: { initialService?: ServiceType
                 />
               </Field>
             </div>
+
+            {TURNSTILE_ENABLED && (
+              <Turnstile key={turnstileKey} action="booking" onToken={setTurnstileToken} />
+            )}
+
+            <p className="text-xs leading-relaxed text-fg-subtle">
+              By booking you agree to our{" "}
+              <Link href="/terms" target="_blank" className="text-fg-muted underline underline-offset-2 hover:text-cyber">
+                Terms
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" target="_blank" className="text-fg-muted underline underline-offset-2 hover:text-cyber">
+                Privacy Policy
+              </Link>
+              .
+            </p>
 
             {/* Honeypot: hidden from people, irresistible to bots. */}
             <div className="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden="true">

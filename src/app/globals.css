@@ -14,6 +14,16 @@
 
   body {
     @apply bg-ink font-sans text-fg antialiased;
+    /* Never let a stray wide element cause sideways scrolling on phones.
+       "clip" (unlike "hidden") keeps position: sticky working. */
+    overflow-x: clip;
+  }
+
+  /* Keep terminal flags literal: no "--" to em-dash ligatures in monospace text. */
+  .font-mono,
+  code,
+  pre {
+    font-variant-ligatures: none;
   }
 
   ::selection {
@@ -77,5 +87,43 @@
 
   .field-valid {
     @apply border-cyber/40;
+  }
+
+  /* Long-form legal copy */
+  .legal section {
+    @apply scroll-mt-24 border-t border-edge/70 pt-10 first:border-t-0 first:pt-0;
+  }
+  .legal section + section {
+    @apply mt-10;
+  }
+  .legal h2 {
+    @apply text-xl font-semibold tracking-tight text-fg sm:text-2xl;
+  }
+  .legal h3 {
+    @apply mt-6 text-base font-semibold text-fg;
+  }
+  .legal p {
+    @apply mt-4 text-[15px] leading-relaxed text-fg-muted;
+  }
+  .legal ul {
+    @apply mt-4 list-disc space-y-2.5 pl-5 text-[15px] leading-relaxed text-fg-muted marker:text-cyber;
+  }
+  .legal strong {
+    @apply font-semibold text-fg;
+  }
+  .legal a {
+    @apply text-cyber underline decoration-cyber/40 underline-offset-2 transition hover:decoration-cyber;
+  }
+  .legal-table {
+    @apply mt-5 overflow-x-auto rounded-xl border border-edge;
+  }
+  .legal-table table {
+    @apply w-full min-w-[36rem] border-collapse text-left text-sm;
+  }
+  .legal-table th {
+    @apply bg-surface px-4 py-3 font-mono text-[11px] font-normal uppercase tracking-wider text-fg-subtle;
+  }
+  .legal-table td {
+    @apply border-t border-edge px-4 py-3 align-top text-fg-muted;
   }
 }

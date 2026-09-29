@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { INDUSTRIES, SERVICE_TYPES, SITE, type Priority } from "@/lib/constants";
+import { readConsent } from "@/lib/consent";
 import { cn } from "@/lib/utils";
 
 // SIMULATED social-proof feed: these events are randomly generated, not real
@@ -42,7 +43,8 @@ export function ActivityToast() {
 
     const schedule = (delay: number) => {
       showTimer = window.setTimeout(() => {
-        if (document.hidden) return schedule(4000);
+        // Wait while the tab is hidden or the cookie banner is still on screen.
+        if (document.hidden || readConsent() === null) return schedule(4000);
         count += 1;
         setActivity({
           id: count,

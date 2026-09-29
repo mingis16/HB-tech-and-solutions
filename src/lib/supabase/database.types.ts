@@ -15,6 +15,7 @@ type InquiryRow = {
   description: string;
   status: "new" | "in_review" | "responded" | "closed";
   user_agent: string | null;
+  ip_hash: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -34,12 +35,14 @@ type BookingRow = {
   timezone: string;
   status: "pending" | "confirmed" | "cancelled" | "completed";
   user_agent: string | null;
+  ip_hash: string | null;
   created_at: string;
   updated_at: string;
 };
 
 type Generated = "id" | "created_at" | "updated_at";
-type Defaulted = "status" | "priority" | "duration_minutes" | "timezone";
+type Nullable = "ip_hash";
+type Defaulted = "status" | "priority" | "duration_minutes" | "timezone" | Nullable;
 
 type InsertOf<Row> = Omit<Row, Generated | Defaulted> &
   Partial<Pick<Row, Extract<keyof Row, Generated | Defaulted>>>;

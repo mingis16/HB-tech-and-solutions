@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   CalendarClock,
@@ -12,6 +13,7 @@ import {
   Send,
 } from "lucide-react";
 import { submitInquiry } from "@/app/actions";
+import { track } from "@/lib/analytics";
 import { INDUSTRIES, PRIORITIES, SERVICE_TYPES, whatsappLink, type Priority } from "@/lib/constants";
 import { inquirySchema, validate, type FieldErrors, type InquiryFormValues } from "@/lib/validation";
 import { cn } from "@/lib/utils";
@@ -19,6 +21,7 @@ import { useUI } from "./UIProvider";
 import { Field, SelectShell, describedBy, fieldClass } from "./ui/Field";
 import { TextField } from "./ui/TextField";
 import { TerminalDots } from "./ui/TerminalDots";
+import { TURNSTILE_ENABLED, Turnstile } from "./Turnstile";
 
 type Key = keyof InquiryFormValues;
 
@@ -83,7 +86,15 @@ export function InquiryForm() {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [highlightService, setHighlightService] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileKey, setTurnstileKey] = useState(0);
   const successHeading = useRef<HTMLHeadingElement>(null);
+  // When the form appeared; submissions faster than a human could type are rejected.
+  const startedAt = useRef(0);
+
+  useEffect(() => {
+    startedAt.current = Date.now();
+  }, []);
 
   // Service cards elsewhere on the page can pre-fill the service type.
   useEffect(
@@ -125,6 +136,12 @@ export function InquiryForm() {
     setServerFieldErrors({});
     setServerError(null);
     setResult(null);
+    startedAt.current = Date.now();
+  }
+
+  function resetTurnstile() {
+    setTurnstileToken("");
+    setTurnstileKey((k) => k + 1);
   }
 
   function handleSubmit(event: React.FormEvent) {
@@ -136,10 +153,25 @@ export function InquiryForm() {
       return;
     }
 
+    if (TURNSTILE_ENABLED && !turnstileToken) {
+      setServerError("Please complete the security check below.");
+      return;
+    }
+
     setServerError(null);
     startTransition(async () => {
-      const res = await submitInquiry({ ...values, website });
+      const res = await submitInquiry(
+        { ...values, website },
+        { elapsedMs: Date.now() - startedAt.current, turnstileToken },
+      );
+      resetTurnstile(); // tokens are single-use
       if (res.ok) {
+        track("generate_lead", {
+          form: "inquiry",
+          service: values.serviceType,
+          industry: values.industry,
+          priority: values.priority,
+        });
         setResult({
           reference: res.data.reference,
           demo: res.demo,
@@ -212,7 +244,7 @@ export function InquiryForm() {
                 <RotateCcw className="size-4" aria-hidden="true" />
                 Submit another request
               </button>
-              <button type="button" onClick={() => openBooking()} className="btn-primary">
+              <button type="button" onClick={() => openBooking()} className="btn-ghost">
                 <CalendarClock className="size-4" aria-hidden="true" />
                 Book a discovery call
               </button>
@@ -294,7 +326,7 @@ export function InquiryForm() {
                     type="tel"
                     autoComplete="tel"
                     inputMode="tel"
-                    placeholder="+1 555 012 3456"
+                    placeholder="+232 76 123 456"
                     value={values.phone}
                     error={errorFor("phone")}
                     valid={isValid("phone")}
@@ -485,6 +517,10 @@ export function InquiryForm() {
                 />
               </div>
 
+              {TURNSTILE_ENABLED && (
+                <Turnstile key={turnstileKey} action="inquiry" onToken={setTurnstileToken} />
+              )}
+
               {serverError && (
                 <div
                   role="alert"
@@ -496,9 +532,15 @@ export function InquiryForm() {
               )}
 
               <div className="flex flex-col-reverse gap-4 border-t border-edge pt-6 sm:flex-row sm:items-center sm:justify-between">
-                <p className="flex items-center gap-2 text-xs text-fg-subtle">
-                  <Lock className="size-3.5 text-cyber" aria-hidden="true" />
-                  Sent over HTTPS and stored privately.
+                <p className="flex items-start gap-2 text-xs leading-relaxed text-fg-subtle sm:max-w-xs">
+                  <Lock className="mt-0.5 size-3.5 shrink-0 text-cyber" aria-hidden="true" />
+                  <span>
+                    Sent over HTTPS and stored privately. By submitting you agree to our{" "}
+                    <Link href="/privacy" target="_blank" className="text-fg-muted underline underline-offset-2 hover:text-cyber">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <a
@@ -519,7 +561,7 @@ export function InquiryForm() {
                     ) : (
                       <>
                         <Send className="size-4" aria-hidden="true" />
-                        Submit request
+                        Send project request
                       </>
                     )}
                   </button>

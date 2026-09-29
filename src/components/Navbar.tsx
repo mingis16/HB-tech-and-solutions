@@ -1,17 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarClock, Menu, MessageCircle, X } from "lucide-react";
-import { NAV_LINKS, whatsappLink } from "@/lib/constants";
+import Link from "next/link";
+import { CalendarClock, Menu, X } from "lucide-react";
+import { LEGAL_LINKS, NAV_LINKS, WHATSAPP_DISPLAY, whatsappLink } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
+import { PrimaryCta } from "./PrimaryCta";
 import { useUI } from "./UIProvider";
+import { WhatsAppIcon } from "./WhatsAppIcon";
 import { Dialog } from "./ui/Dialog";
 
 export function Navbar() {
   const { openBooking } = useUI();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const close = () => setMenuOpen(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -34,29 +38,26 @@ export function Navbar() {
       )}
     >
       <nav className="container flex h-16 items-center justify-between gap-4" aria-label="Main">
-        <a href="#top" className="rounded-lg" aria-label="HB Tech Solutions home">
+        <Link href="/" className="rounded-lg" aria-label="HB Tech Solutions home">
           <Logo />
-        </a>
+        </Link>
 
         <ul className="hidden items-center gap-1 md:flex">
           {NAV_LINKS.map((link) => (
             <li key={link.href}>
-              <a
+              <Link
                 href={link.href}
                 className="rounded-md px-3 py-2 font-mono text-[13px] text-fg-muted transition hover:bg-surface hover:text-fg"
               >
                 <span className="text-cyber/70">./</span>
                 {link.label.toLowerCase()}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
 
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => openBooking()} className="btn-primary hidden min-h-10 py-2 sm:inline-flex">
-            <CalendarClock className="size-4" aria-hidden="true" />
-            Book a call
-          </button>
+          <PrimaryCta location="navbar" className="hidden min-h-10 py-2 sm:inline-flex" />
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
@@ -73,13 +74,13 @@ export function Navbar() {
       {/* Mobile drawer */}
       <Dialog
         open={menuOpen}
-        onClose={() => setMenuOpen(false)}
+        onClose={close}
         labelledBy="mobile-menu-title"
         className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-[86vw] max-w-sm open:animate-drawer-in md:hidden"
       >
         <div
           id="mobile-menu"
-          className="flex h-full flex-col border-l border-edge bg-surface px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]"
+          className="flex h-full flex-col overflow-y-auto border-l border-edge bg-surface px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]"
         >
           <div className="flex h-12 items-center justify-between">
             <span id="mobile-menu-title" className="font-mono text-xs text-cyber">
@@ -87,7 +88,7 @@ export function Navbar() {
             </span>
             <button
               type="button"
-              onClick={() => setMenuOpen(false)}
+              onClick={close}
               className="grid size-11 place-items-center rounded-lg text-fg-muted hover:bg-surface-hover hover:text-fg"
               aria-label="Close menu"
             >
@@ -98,34 +99,48 @@ export function Navbar() {
           <ul className="mt-4 space-y-1">
             {NAV_LINKS.map((link, i) => (
               <li key={link.href}>
-                <a
+                <Link
                   href={link.href}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={close}
                   className="flex min-h-12 items-center gap-3 rounded-lg px-3 text-lg font-medium text-fg transition hover:bg-surface-hover"
                 >
                   <span className="font-mono text-xs text-cyber">0{i + 1}</span>
                   {link.label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
 
           <div className="mt-auto space-y-3 border-t border-edge pt-5">
+            <PrimaryCta location="mobile_menu" onClick={close} className="w-full" />
+            <a
+              href={whatsappLink()}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-track-location="mobile_menu"
+              className="btn-ghost w-full"
+            >
+              <WhatsAppIcon className="size-4 text-[#25D366]" />
+              WhatsApp {WHATSAPP_DISPLAY}
+            </a>
             <button
               type="button"
               onClick={() => {
-                setMenuOpen(false);
+                close();
                 openBooking();
               }}
-              className="btn-primary w-full"
+              className="flex min-h-11 w-full items-center justify-center gap-2 text-sm text-fg-muted transition hover:text-fg"
             >
               <CalendarClock className="size-4" aria-hidden="true" />
-              Book a 30-min call
+              Or book a 30-min discovery call
             </button>
-            <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">
-              <MessageCircle className="size-4" aria-hidden="true" />
-              Chat on WhatsApp
-            </a>
+            <p className="flex justify-center gap-4 pt-1 text-xs text-fg-subtle">
+              {LEGAL_LINKS.map((link) => (
+                <Link key={link.href} href={link.href} onClick={close} className="py-2 hover:text-fg">
+                  {link.label}
+                </Link>
+              ))}
+            </p>
           </div>
         </div>
       </Dialog>
